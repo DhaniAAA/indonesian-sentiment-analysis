@@ -10,7 +10,7 @@
 </div>
 
 <!-- Mobile Drawer -->
-<dialog id="navDrawer" class="hidden fixed inset-0 bg-black/30" aria-modal="true" aria-labelledby="mobileNavTitle">
+<div id="navDrawer" class="hidden fixed inset-0 z-50 bg-black/30" role="dialog" aria-modal="true" aria-labelledby="mobileNavTitle">
     <div class="absolute left-0 top-0 h-full w-72 p-6 bg-white border-r-4 border-black shadow-[10px_0_0_0_rgba(0,0,0,0.5)]">
         <div class="flex items-center justify-between mb-6">
             <div class="flex items-center gap-3">
@@ -34,7 +34,7 @@
             </a>
             <a class="flex items-center gap-4 p-3 border-2 border-transparent hover:border-black hover:bg-yellow-50 hover:shadow-[4px_4px_0_0_#000] transition-all no-underline" href="train.php">
                 <span class="material-symbols-outlined">model_training</span>
-                <span>Training & Datasets</span>
+                <span>Training &amp; Datasets</span>
             </a>
             <a class="flex items-center gap-4 p-3 border-2 border-transparent hover:border-black hover:bg-yellow-50 hover:shadow-[4px_4px_0_0_#000] transition-all no-underline" href="about.php">
                 <span class="material-symbols-outlined">info</span>
@@ -42,4 +42,4 @@
             </a>
         </nav>
     </div>
-</dialog>
+</div>

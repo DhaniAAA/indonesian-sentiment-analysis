@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "fba6c5d830a3deb375b9cfc75926229b",
+    "content-hash": "77e293703458b2c6bc6512ffd4ef0ca3",
     "packages": [
         {
             "name": "php-ai/php-ml",

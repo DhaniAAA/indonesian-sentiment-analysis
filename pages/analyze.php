@@ -1,6 +1,6 @@
 <?php
-// Aktifkan tampilan error
-ini_set('display_errors', 1);
+// Aktifkan tampilan error (dimatikan di production agar tidak bocor ke JSON)
+ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
 // Log semua error ke file

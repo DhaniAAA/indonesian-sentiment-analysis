@@ -71,24 +71,9 @@ class Preprocessing
      */
     public function convertEmoji($text)
     {
-        // Tambahkan debug untuk memeriksa teks sebelum dan sesudah konversi
-        $before = $text;
-
         foreach ($this->emojiMap as $emoji => $meaning) {
             $text = str_replace($emoji, ' ' . $meaning . ' ', $text);
         }
-
-        // Cek apakah teks berubah
-        $hasEmoji = ($before !== $text);
-
-        // Log untuk debugging
-        file_put_contents(
-            __DIR__ . '/../debug_emoji.log',
-            date('Y-m-d H:i:s') . " - Emoji detected: " . ($hasEmoji ? "YES" : "NO") .
-                "\nBefore: " . substr($before, 0, 100) .
-                "\nAfter: " . substr($text, 0, 100) . "\n\n",
-            FILE_APPEND
-        );
 
         return $text;
     }
@@ -191,7 +176,7 @@ class Preprocessing
         return $result;
     }
 
-    private function applyNegation(array $tokens): array
+    public function applyNegation(array $tokens): array
     {
         $result = [];
         $i = 0;

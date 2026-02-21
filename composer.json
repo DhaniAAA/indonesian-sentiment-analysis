@@ -3,8 +3,8 @@
     "description": "Aplikasi analisis sentimen menggunakan PHP dan Naive Bayes",
     "require": {
         "php": ">=7.4",
-        "php-ai/php-ml": "^0.10.0",
-        "sastrawi/sastrawi": "^1.2"
+        "php-ai/php-ml": "0.10.0",
+        "sastrawi/sastrawi": "1.2"
     },
     "autoload": {
         "psr-4": {

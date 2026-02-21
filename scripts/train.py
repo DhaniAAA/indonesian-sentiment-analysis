@@ -2,8 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.naive_bayes import GaussianNB
-# from sklearn.naive_bayes import MultinomialNB
+from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import classification_report, confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -157,27 +156,21 @@ def train_model(dataset_id=None, csv_path=None):
         print("Error: Vocabulary is empty. Cannot train model.")
         return
 
-    # Convert sparse matrix to dense array for GaussianNB
-    X_train_dense = X_train_vec.toarray()
-    X_test_dense = X_test_vec.toarray()
-
     print(f"Vocabulary size: {len(vectorizer.vocabulary_)}")
-    print(f"Training data shape: {X_train_dense.shape}")
-    print(f"Testing data shape: {X_test_dense.shape}")
+    print(f"Training data shape: {X_train_vec.shape}")
+    print(f"Testing data shape: {X_test_vec.shape}")
 
-    # Save vectorizer
+    # Save vectorizer ke root/models/ (konsisten dengan SentimentModel.php)
     print("Saving vectorizer...")
-    models_dir = os.path.join(PROJECT_DIR, 'pages', 'models')
+    models_dir = os.path.join(PROJECT_DIR, 'models')
     os.makedirs(models_dir, exist_ok=True)
     with open(os.path.join(models_dir, 'vectorizer.pkl'), 'wb') as f:
         pickle.dump(vectorizer, f)
 
-    # Train Naive Bayes
+    # Train Naive Bayes (MultinomialNB lebih tepat untuk word count data)
     print("Training Naive Bayes model...")
-    classifier = GaussianNB()
-    classifier.fit(X_train_dense, y_train)
-    # classifier = MultinomialNB()
-    # classifier.fit(X_train_vec, y_train)
+    classifier = MultinomialNB()
+    classifier.fit(X_train_vec, y_train)
     # Save model
     print("Saving model...")
     with open(os.path.join(models_dir, 'naive_bayes.pkl'), 'wb') as f:
@@ -185,7 +178,7 @@ def train_model(dataset_id=None, csv_path=None):
 
     # Evaluate model
     print("\nEvaluating model...")
-    y_pred = classifier.predict(X_test_dense)
+    y_pred = classifier.predict(X_test_vec)
 
     # Generate and print detailed metrics
     print("\nDetailed Metrics:")

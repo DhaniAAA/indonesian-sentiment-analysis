@@ -161,7 +161,8 @@ if ($conn) {
             // Execute Python Script for Evaluation
             $python_script = __DIR__ . '/../scripts/train.py';
             $escaped_csv = escapeshellarg($temp_csv);
-            $cmd = "python \"$python_script\" --csv $escaped_csv --dataset_id $dataset_id 2>&1";
+            $escaped_script = escapeshellarg($python_script);
+            $cmd = "python $escaped_script --csv $escaped_csv --dataset_id " . (int)$dataset_id . " 2>&1";
             $output = shell_exec($cmd);
 
             // Read Python Result JSON
@@ -324,7 +325,6 @@ include '../includes/header.php';
                     </ul>
                 </div>
             </article>
-        </section>
         </section>
 
         <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mt-6">

@@ -11,7 +11,7 @@ class SentimentModel
     private $classifier;
     private $lexicon;
     private $preprocessor;
-    private $calibrationA = -0.5;
+    private $calibrationA = 1.0;
     private $calibrationB = 0.0;
 
     /**
@@ -79,59 +79,69 @@ class SentimentModel
     private function loadClassifier()
     {
         $this->classifier = null;
-        $modelPath = __DIR__ . '/../models/naive_bayes.dat';
+        $modelPath   = __DIR__ . '/../models/naive_bayes.dat';
         $modelPathGz = __DIR__ . '/../models/naive_bayes.dat.gz';
 
-        if (file_exists($modelPath)) {
-            // Cek ukuran file
-            $fileSize = filesize($modelPath);
-            if ($fileSize > 500 * 1024 * 1024) { // Jika lebih dari 500MB
-                error_log("Model file size ($fileSize bytes) is too large to load safely");
+        // Cari file model yang tersedia
+        $fileToLoad = null;
+        $isGzip     = false;
+
+        if (file_exists($modelPathGz)) {
+            $fileToLoad = $modelPathGz;
+            $isGzip     = true;
+        } elseif (file_exists($modelPath)) {
+            $fileToLoad = $modelPath;
+        }
+
+        if ($fileToLoad === null) {
+            error_log("Model file not found: $modelPath");
+            return;
+        }
+
+        // Periksa ukuran file sebelum dimuat
+        $fileSize = filesize($fileToLoad);
+        if ($fileSize > 500 * 1024 * 1024) {
+            error_log("Model file size ($fileSize bytes) is too large to load safely");
+            return;
+        }
+
+        try {
+            $currentLimit = ini_get('memory_limit');
+            if ($currentLimit !== '-1') {
+                ini_set('memory_limit', '1024M');
+            }
+
+            if ($isGzip) {
+                $gz     = gzopen($fileToLoad, 'rb');
+                $buffer = '';
+                while (!gzeof($gz)) {
+                    $buffer .= gzread($gz, 1048576);
+                }
+                gzclose($gz);
+                $data = $buffer;
+                unset($buffer);
+            } else {
+                $data = file_get_contents($fileToLoad);
+            }
+
+            if ($data === false) {
+                error_log("Failed to read model file: $fileToLoad");
+                ini_set('memory_limit', $currentLimit);
                 return;
             }
 
-            try {
-                $currentLimit = ini_get('memory_limit');
-                if ($currentLimit !== '-1') {
-                    ini_set('memory_limit', '1024M');
-                }
-                if (file_exists($modelPathGz)) {
-                    $gz = gzopen($modelPathGz, 'rb');
-                    $buffer = '';
-                    while (!gzeof($gz)) {
-                        $buffer .= gzread($gz, 1048576);
-                    }
-                    gzclose($gz);
-                    $data = $buffer;
-                    unset($buffer);
-                } else {
-                    $data = file_get_contents($modelPath);
-                }
-                if ($data === false) {
-                    error_log("Failed to read model file: $modelPath");
-                    if ($currentLimit !== null) {
-                        ini_set('memory_limit', $currentLimit);
-                    }
-                    return;
-                }
+            $this->classifier = @unserialize($data);
+            unset($data);
+            gc_collect_cycles();
 
-                $this->classifier = @unserialize($data);
-                unset($data);
-                gc_collect_cycles();
-                if ($this->classifier === false) {
-                    error_log("Failed to unserialize model data");
-                    if ($currentLimit !== null) {
-                        ini_set('memory_limit', $currentLimit);
-                    }
-                    return;
-                }
-                if ($currentLimit !== null) {
-                    ini_set('memory_limit', $currentLimit);
-                }
-            } catch (\Exception $e) {
-                error_log("Error loading classifier: " . $e->getMessage());
-                return;
+            if ($this->classifier === false) {
+                error_log("Failed to unserialize model data from: $fileToLoad");
+                $this->classifier = null;
             }
+
+            ini_set('memory_limit', $currentLimit);
+        } catch (\Exception $e) {
+            error_log("Error loading classifier: " . $e->getMessage());
         }
     }
 
@@ -155,6 +165,9 @@ class SentimentModel
 
         // Tokenize
         $tokens = $this->preprocessor->tokenize($text);
+
+        // Apply negation handling
+        $tokens = $this->preprocessor->applyNegation($tokens);
 
         // Remove stopwords
         $tokens = $this->preprocessor->removeStopwords($tokens);
@@ -333,6 +346,13 @@ class SentimentModel
         // Cek apakah ada kata dalam vocabulary
         $has_vocab_match = $this->hasVocabularyMatch($stemmed_tokens);
 
+        // Nilai default jika tidak ada path yang terpenuhi (defensive fallback)
+        $prediction = [
+            'sentiment'    => 'neutral',
+            'probabilities' => ['positive' => 0.33, 'negative' => 0.33, 'neutral' => 0.34],
+            'method'       => 'default_fallback',
+        ];
+
         // Pilih metode analisis
         if ($has_vocab_match) {
             if ($this->classifier === null) {
@@ -342,15 +362,13 @@ class SentimentModel
                 // Gunakan model machine learning
                 $prediction = $this->predictWithModel($stemmed_text);
             } else {
-                // Gunakan lexicon fallback
+                // Gunakan lexicon fallback karena classifier gagal dimuat
                 $prediction = $this->predictWithLexicon($tokens);
 
-                // Tambahkan pesan warning jika model ada tapi tidak ada kata yang cocok
-                if (!empty($this->vocabulary) && $this->classifier !== null) {
+                // Tambahkan pesan warning jika vocabulary ada tapi model tidak bisa dimuat
+                if (!empty($this->vocabulary)) {
                     $prediction['warning'] = true;
-                    $prediction['message'] = 'Tidak ada kata dalam teks yang cocok dengan model. Menggunakan analisis berbasis lexicon sebagai fallback.';
-
-                    // Ambil kata contoh dari vocabulary (bukan indeks)
+                    $prediction['message'] = 'Model tidak dapat dimuat. Menggunakan analisis berbasis lexicon sebagai fallback.';
                     $prediction['sample_words'] = $this->getSampleWords(5);
                 }
             }

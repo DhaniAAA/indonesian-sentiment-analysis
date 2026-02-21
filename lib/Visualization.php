@@ -6,7 +6,7 @@
 class Visualization {
     /**
      * Menghasilkan data untuk diagram batang sentimen
-     * 
+     *
      * @param array $sentimentCounts Jumlah untuk setiap kategori sentimen
      * @return array Data untuk diagram batang
      */
@@ -31,25 +31,25 @@ class Visualization {
                 ]
             ]
         ];
-        
+
         return $chartData;
     }
-    
+
     /**
      * Menghasilkan data untuk wordcloud
-     * 
+     *
      * @param array $wordData Array berisi data kata (frekuensi dan sentimen)
      * @return array Data untuk wordcloud
      */
     public function generateWordCloudData($wordData) {
         $cloudData = [];
-        
+
         foreach ($wordData as $word => $data) {
             // Skip kata yang terlalu pendek
             if (strlen($word) < 3) {
                 continue;
             }
-            
+
             // Tentukan warna berdasarkan sentimen
             $color = '#888888'; // default untuk neutral
             if ($data['sentiment'] === 'positive') {
@@ -57,26 +57,27 @@ class Visualization {
             } elseif ($data['sentiment'] === 'negative') {
                 $color = '#ff6384'; // merah
             }
-            
+
             $cloudData[] = [
                 'text' => $word,
                 'weight' => $data['count'],
                 'color' => $color
             ];
         }
-        
+
         return $cloudData;
     }
-    
+
     /**
      * Menghasilkan HTML untuk diagram batang
-     * 
+     *
      * @param array $chartData Data diagram batang
      * @return string HTML untuk diagram batang
      */
     public function renderBarChart($chartData) {
-        $chartDataJson = json_encode($chartData);
-        
+        // JSON_HEX_TAG mencegah XSS jika data mengandung </script> atau HTML tags
+        $chartDataJson = json_encode($chartData, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+
         $html = <<<HTML
         <div class="chart-container">
             <canvas id="sentimentBarChart"></canvas>
@@ -106,39 +107,53 @@ class Visualization {
             });
         </script>
 HTML;
-        
+
         return $html;
     }
-    
+
     /**
      * Menghasilkan HTML untuk wordcloud
-     * 
+     *
      * @param array $cloudData Data wordcloud
      * @return string HTML untuk wordcloud
      */
     public function renderWordCloud($cloudData) {
-        $cloudDataJson = json_encode($cloudData);
-        
+        // JSON_HEX_TAG mencegah XSS
+        $cloudDataJson = json_encode($cloudData, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+
         $html = <<<HTML
         <div id="wordcloud" style="width: 100%; height: 400px;"></div>
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 var cloudData = {$cloudDataJson};
-                $('#wordcloud').jQCloud(cloudData, {
-                    width: $('#wordcloud').width(),
-                    height: 400,
-                    autoResize: true
-                });
+                var container = document.getElementById('wordcloud');
+                // Gunakan vanilla JS, tidak bergantung pada jQuery
+                if (typeof WordCloud !== 'undefined') {
+                    var canvas = document.createElement('canvas');
+                    canvas.width = container.offsetWidth;
+                    canvas.height = 400;
+                    container.appendChild(canvas);
+                    WordCloud(canvas, {
+                        list: cloudData.map(function(d) { return [d.text, d.weight]; }),
+                        gridSize: 8,
+                        weightFactor: 4,
+                        backgroundColor: 'transparent',
+                        color: function(word, weight, fontSize, distance, theta) {
+                            return ['#8B5CF6','#10B981','#EF4444','#F59E0B'][Math.floor(Math.random()*4)];
+                        },
+                        rotateRatio: 0
+                    });
+                }
             });
         </script>
 HTML;
-        
+
         return $html;
     }
-    
+
     /**
      * Menghasilkan ringkasan teks dari hasil analisis
-     * 
+     *
      * @param array $stats Statistik hasil analisis
      * @return string HTML ringkasan
      */
@@ -147,11 +162,11 @@ HTML;
         $positive = $stats['sentiment_counts']['positive'];
         $negative = $stats['sentiment_counts']['negative'];
         $neutral = $stats['sentiment_counts']['neutral'];
-        
+
         $positivePercent = $total > 0 ? round(($positive / $total) * 100, 1) : 0;
         $negativePercent = $total > 0 ? round(($negative / $total) * 100, 1) : 0;
         $neutralPercent = $total > 0 ? round(($neutral / $total) * 100, 1) : 0;
-        
+
         $html = <<<HTML
         <div class="summary-container">
             <h3>Ringkasan Analisis</h3>
@@ -175,7 +190,7 @@ HTML;
             </div>
         </div>
 HTML;
-        
+
         return $html;
     }
 }
