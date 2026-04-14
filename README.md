@@ -1,6 +1,8 @@
 # Aplikasi Analisis Sentimen
 
-Aplikasi web untuk menganalisis sentimen teks menggunakan algoritma Naive Bayes dan CountVectorizer. Aplikasi ini menggunakan PHP dan Python untuk analisis sentimen bahasa Indonesia.
+![Sentiment AI](image.png)
+
+Aplikasi web untuk menganalisis sentimen teks menggunakan algoritma Naive Bayes dan CountVectorizer. Aplikasi web ini sepenuhnya menggunakan PHP (termasuk implementasi Machine Learning melalui `php-ml`) untuk antarmuka dan prediksi sentimen bahasa Indonesia. Terdapat pula skrip Python alternatif di dalam folder `scripts/` untuk eksperimen model.
 
 ## Fitur
 
@@ -11,8 +13,8 @@ Aplikasi web untuk menganalisis sentimen teks menggunakan algoritma Naive Bayes 
   - Tokenisasi
   - Stemming menggunakan Sastrawi
 - Ekstraksi fitur menggunakan CountVectorizer
-- Klasifikasi sentimen menggunakan Naive Bayes
-- Labeling menggunakan lexicon
+- Klasifikasi sentimen menggunakan Naive Bayes (Hybrid fallback ke Lexicon)
+- Labeling otomatis menggunakan lexicon sentimen
 - Visualisasi:
   - Diagram batang probabilitas sentimen
   - Word cloud
@@ -20,25 +22,19 @@ Aplikasi web untuk menganalisis sentimen teks menggunakan algoritma Naive Bayes 
 ## Persyaratan Sistem
 
 - PHP >= 7.4
-- Python >= 3.8
 - Composer
 - Web server (Apache/Nginx)
-- Dependensi Python:
-  - numpy >= 1.24.0
-  - pandas >= 2.0.0
-  - scikit-learn >= 1.3.0
-  - matplotlib >= 3.7.0
-  - seaborn >= 0.12.0
-  - mysql-connector-python >= 8.0.0
+- MySQL / MariaDB
+- Python >= 3.8 dengan dependensi: numpy, pandas, scikit-learn, matplotlib, seaborn, mysql-connector-python
 
 ## Instalasi
 
 1. Clone repositori ini
-2. Install dependensi dengan Composer:
+2. Install dependensi PHP dengan Composer:
    ```bash
    composer install
    ```
-3. Install dependensi Python:
+3. Install dependensi Python jika ingin menjalankan skrip evaluasi Python:
    ```bash
    pip install -r requirements.txt
    ```
@@ -88,7 +84,7 @@ Aplikasi web untuk menganalisis sentimen teks menggunakan algoritma Naive Bayes 
 ├── pages/           # Halaman aplikasi
 │   ├── about.php
 │   ├── analyze.php
-│   ├── dataset.php 
+│   ├── dataset.php
 │   ├── download_dataset.php
 │   ├── predict.php
 │   ├── result.php
@@ -103,6 +99,7 @@ Aplikasi web untuk menganalisis sentimen teks menggunakan algoritma Naive Bayes 
 ## Catatan Penting
 
 Beberapa file tidak disertakan dalam repositori GitHub karena ukurannya yang besar atau karena merupakan file pengujian:
+
 1. File model machine learning di direktori `models/`:
    - `naive_bayes.dat`
    - `naive_bayes.pkl`

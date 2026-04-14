@@ -32,7 +32,7 @@ include 'includes/header.php';
                             <span class="material-symbols-outlined text-4xl text-black">sentiment_satisfied</span>
                             <strong class="text-2xl">Sentiment AI</strong>
                         </div>
-                        <p class="text-lg font-bold">Desain baru yang konsisten, responsif, dan aksesibel di seluruh halaman.</p>
+                        <p class="text-lg font-bold">Analisis sentimen adalah proses menggunakan pemrosesan bahasa alami (NLP) untuk menentukan apakah suatu teks bersifat positif, negatif, atau netral.</p>
                         <div class="mt-4 flex gap-2">
                              <div class="w-4 h-4 bg-red-400 border border-black rounded-full"></div>
                              <div class="w-4 h-4 bg-yellow-400 border border-black rounded-full"></div>
