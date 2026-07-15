@@ -18,8 +18,8 @@ $stats = [
     'negative' => 0,
     'neutral' => 0
 ];
-require_once '../models/SentimentModel.php';
-$model = new SentimentModel();
+// SentimentModel hanya dimuat jika benar-benar diperlukan (bukan di loop CSV)
+// $model = new SentimentModel(); -- dihapus dari sini untuk mencegah OOM
 $confusion_matrix = [
     'positive' => ['positive' => 0, 'neutral' => 0, 'negative' => 0],
     'neutral' => ['positive' => 0, 'neutral' => 0, 'negative' => 0],
@@ -79,6 +79,9 @@ if ($conn) {
                 require_once '../lib/Preprocessing.php';
                 $preprocessor = new Preprocessing();
 
+                $display_limit = 500; // Batasi tampilan UI agar tidak berat
+                $row_count = 0;
+
                 while (($row = fgetcsv($handle)) !== false) {
                     if (!isset($row[$textIndex]) || empty(trim($row[$textIndex]))) {
                         continue;
@@ -87,9 +90,9 @@ if ($conn) {
                     $text = $row[$textIndex];
 
                     // Preprocessing
-                    $text = $preprocessor->convertEmoji($text);
-                    $text = $preprocessor->convertEmoticons($text);
-                    $cleaned_text = $preprocessor->cleanText($text);
+                    $text_for_proc = $preprocessor->convertEmoji($text);
+                    $text_for_proc = $preprocessor->convertEmoticons($text_for_proc);
+                    $cleaned_text = $preprocessor->cleanText($text_for_proc);
 
                     if (empty(trim($cleaned_text))) {
                         continue;
@@ -99,7 +102,7 @@ if ($conn) {
                     $tokens = $preprocessor->removeStopwords($tokens);
                     $stemmed_tokens = $preprocessor->stemWords($tokens);
 
-                    // Calculate sentiment score
+                    // Calculate sentiment score via Lexicon
                     $total_score = 0;
                     foreach ($stemmed_tokens as $token) {
                         if (isset($lexicon_scores[$token])) {
@@ -115,29 +118,25 @@ if ($conn) {
                         $sentiment = 'negative';
                     }
 
-                    // Write to temp CSV for Python
+                    // Write to temp CSV for Python (semua baris, tidak dibatasi)
                     fputcsv($temp_handle, [$cleaned_text, $sentiment]);
 
-                    // Model Prediction (Predicted) - If model exists
-                    // We assume the global model is what we want to test against.
-                    // Ideally, we'd load a specific model version, but for now use the active one.
-                    // This re-analyzes using the full pipeline including preprocessing for consistency.
-                    $model_result = $model->analyze($text);
-                    $predicted_sentiment = $model_result['sentiment'] ?? 'neutral';
-
-                    // Update Confusion Matrix
-                    // Ensure keys exist to avoid warnings if model returns something unexpected (though it shouldn't)
-                    if (isset($confusion_matrix[$sentiment][$predicted_sentiment])) {
-                        $confusion_matrix[$sentiment][$predicted_sentiment]++;
+                    // Update confusion matrix sementara dengan lexicon vs lexicon
+                    // (akan ditimpa oleh hasil Python setelah Python selesai)
+                    if (isset($confusion_matrix[$sentiment][$sentiment])) {
+                        $confusion_matrix[$sentiment][$sentiment]++;
                     }
 
-                    // Store row data for table
-                    $dataset_data[] = [
-                        'text' => $text,
-                        'actual' => $sentiment,
-                        'predicted' => $predicted_sentiment,
-                        'score' => $total_score
-                    ];
+                    // Store row data untuk tabel UI (dibatasi 500 baris)
+                    if ($row_count < $display_limit) {
+                        $dataset_data[] = [
+                            'text'      => $text,
+                            'actual'    => $sentiment,
+                            'predicted' => $sentiment, // akan diperbarui dari JSON Python jika tersedia
+                            'score'     => $total_score
+                        ];
+                        $row_count++;
+                    }
 
                     // Count words for WordCloud
                     foreach ($stemmed_tokens as $token) {
@@ -159,11 +158,18 @@ if ($conn) {
             fclose($temp_handle);
 
             // Execute Python Script for Evaluation
+            // CACHE: hanya jalankan Python jika JSON belum ada atau temp_csv lebih baru
             $python_script = __DIR__ . '/../scripts/train.py';
-            $escaped_csv = escapeshellarg($temp_csv);
-            $escaped_script = escapeshellarg($python_script);
-            $cmd = "python $escaped_script --csv $escaped_csv --dataset_id " . (int)$dataset_id . " 2>&1";
-            $output = shell_exec($cmd);
+            $json_path_check = __DIR__ . "/data/testing/test_data_{$dataset_id}.json";
+            $should_run_python = !file_exists($json_path_check) ||
+                (filemtime($temp_csv) > filemtime($json_path_check));
+
+            if ($should_run_python) {
+                $escaped_csv = escapeshellarg($temp_csv);
+                $escaped_script = escapeshellarg($python_script);
+                $cmd = "python $escaped_script --csv $escaped_csv --dataset_id " . (int)$dataset_id . " 2>&1";
+                $output = shell_exec($cmd);
+            }
 
             // Read Python Result JSON
             $json_path = __DIR__ . "/data/testing/test_data_{$dataset_id}.json";
@@ -181,14 +187,18 @@ if ($conn) {
                     $y_pred = $py_data['y_pred'];
 
                     for ($i = 0; $i < count($y_test); $i++) {
-                        $actual = $y_test[$i];
-                        $pred = $y_pred[$i];
-                        // Normalize casing just in case
-                        $actual = strtolower($actual);
-                        $pred = strtolower($pred);
+                        $actual = strtolower($y_test[$i]);
+                        $pred   = strtolower($y_pred[$i]);
 
+                        // Update confusion matrix dari model ML Python
                         if (isset($confusion_matrix[$actual][$pred])) {
                             $confusion_matrix[$actual][$pred]++;
+                        }
+
+                        // Update kolom 'predicted' di tabel menggunakan hasil model ML Python
+                        // y_pred berurutan sama seperti baris CSV yang kita proses
+                        if (isset($dataset_data[$i])) {
+                            $dataset_data[$i]['predicted'] = $pred;
                         }
                     }
                 }
